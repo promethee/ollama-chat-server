@@ -1,0 +1,3 @@
+fastapi==0.136.1
+ollama==0.6.2
+uvicorn==0.47.0

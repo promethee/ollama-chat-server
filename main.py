@@ -1,12 +1,21 @@
 #!/usr/bin/python
+import logging
+import uvicorn
+from uvicorn.config import LOGGING_CONFIG
 import requests
 import json
 from enum import Enum, IntEnum
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from ollama import Client
+
+LOGGING_CONFIG['formatters']['default']['fmt'] = '%(name)s %(levelprefix)s %(message)s'
+logger = logging.getLogger('uvicorn.error')
+logger.name = 'uvicorn'
+logger.info("")
+logger.info("STARTING")
 
 app = FastAPI()
 
@@ -50,14 +59,22 @@ def stream_ollama_response(payload):
 
 @app.post("/api/chat")
 async def _api_chat(payload: ChatPayload):
+    logger.info("")
+    logger.info("Sending user message to Ollama model")
     if payload.stream:
+        logger.info("Streaming the response, chunk by chunk")
         return StreamingResponse(stream_ollama_response(payload), media_type="application/json")
     else:
+        logger.info("Not streaming the response, waiting for it")
         response = client.chat(model=payload.model, messages=payload.messages, stream=payload.stream)
+        logger.info("Sending the response")
         return response
 
 @app.get("/api/tags")
 async def _api_tags():
+    global models, model
+    logger.info("")
+    logger.info("Returning models list")
     return client.list()
 
 @app.get("/")
@@ -65,5 +82,4 @@ async def root():
     return "https://github.com/ollama/ollama/blob/main/docs/api.md"
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=11434, reload=True, log_level="debug")

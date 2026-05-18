@@ -1,3 +1,16 @@
+email-validator==2.3.0
 fastapi==0.136.1
+fastapi-cli==0.0.24
+fastapi-cloud-cli==0.17.1
+httptools==0.7.1
+Jinja2==3.1.6
 ollama==0.6.2
+pip==26.1.1
+pydantic-extra-types==2.11.1
+pydantic-settings==2.14.1
+python-multipart==0.0.28
+PyYAML==6.0.3
+requests==2.34.2
 uvicorn==0.47.0
+watchfiles==1.1.1
+websockets==16.0

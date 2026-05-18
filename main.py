@@ -82,4 +82,5 @@ async def root():
     return "https://github.com/ollama/ollama/blob/main/docs/api.md"
 
 if __name__ == "__main__":
+    logger.info("Ollama Client @ " + OLLAMA_URL)
     uvicorn.run("main:app", host="0.0.0.0", port=11434, reload=True, log_level="debug")

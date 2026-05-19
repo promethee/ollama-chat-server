@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import logging
 import uvicorn
+import signal
 from uvicorn.config import LOGGING_CONFIG
 import requests
 import json
@@ -11,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from ollama import Client
 
-LOGGING_CONFIG['formatters']['default']['fmt'] = '%(name)s %(levelprefix)s %(message)s'
+LOGGING_CONFIG['formatters']['default']['fmt'] = '%(levelprefix)s %(message)s'
 logger = logging.getLogger('uvicorn.error')
 logger.name = 'uvicorn'
 logger.info("")
@@ -41,18 +42,36 @@ class ChatPayload(BaseModel):
     model: str
     stream: bool
 
-OLLAMA_URL = "http://192.168.0.66:11434"
+OLLAMA_URL = "http://localhost:11434"
+PORT = 11435
 
-client = Client(
-    host=OLLAMA_URL
-)
+try:
+    with open('settings.json', 'r') as file:
+        settings = json.load(file)
+        logger.info("settings.json file found")
+
+        if settings["ollama_url"]:
+            OLLAMA_URL = settings["ollama_url"]
+            logger.info("\tusing OLLAMA_URL = " + settings["ollama_url"])
+
+        if settings["port"]:
+            PORT = settings["port"]
+            logger.info("\tusing PORT = " + str(settings["port"]))
+    
+except FileNotFoundError:
+    logger.info("settings.json file not found, using default values")
+
+client = Client(host=OLLAMA_URL)
 
 def stream_ollama_response(payload):
     url = OLLAMA_URL + '/api/chat'
     with requests.post(url, json=payload.model_dump(), stream=True) as response:
         if response.status_code == 200:
+            line_count = 0
             for line in response.iter_lines():
                 if line:
+                    line_count += 1
+                    logger.info("\tReturning chunk {count} to client".format(count=line_count))
                     yield line.decode("utf-8") + "\n"
         else:
             return response.json()
@@ -83,4 +102,4 @@ async def root():
 
 if __name__ == "__main__":
     logger.info("Ollama Client @ " + OLLAMA_URL)
-    uvicorn.run("main:app", host="0.0.0.0", port=11434, reload=True, log_level="debug")
+    uvicorn.run("main:app", host="0.0.0.0", port=PORT, reload=True, log_level="debug")

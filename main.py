@@ -21,11 +21,9 @@ logger.info("STARTING")
 
 app = FastAPI()
 
-app.mount("/", StaticFiles(directory="client", html=True), name="client")
-
 OLLAMA_URL = "http://localhost:11434"
 PORT = 11435
-CORS_ALLOW_ORIGINS = ['http://localhost', 'http://127.0.0.1']
+CORS_ALLOW_ORIGINS = ['*']
 
 try:
     with open('settings.json', 'r') as file:
@@ -35,6 +33,10 @@ try:
         if "ollama_url" in settings:
             OLLAMA_URL = settings["ollama_url"]
             logger.info("\tusing OLLAMA_URL = " + settings["ollama_url"])
+            
+        if "host" in settings:
+            HOST = settings["host"]
+            logger.info("\nusing HOST = " + settings["host"])
 
         if "port" in settings:
             PORT = settings["port"]
@@ -107,6 +109,8 @@ async def _api_tags():
 @app.get("/api")
 async def root():
     return "https://github.com/ollama/ollama/blob/main/docs/api.md"
+
+app.mount("/", StaticFiles(directory="client", html=True), name="client")
 
 if __name__ == "__main__":
     logger.info("Ollama Client @ " + OLLAMA_URL)

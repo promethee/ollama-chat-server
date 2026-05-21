@@ -7,6 +7,7 @@ import requests
 import json
 from enum import Enum, IntEnum
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -20,9 +21,37 @@ logger.info("STARTING")
 
 app = FastAPI()
 
+app.mount("/", StaticFiles(directory="client", html=True), name="client")
+
+OLLAMA_URL = "http://localhost:11434"
+PORT = 11435
+CORS_ALLOW_ORIGINS = ['http://localhost', 'http://127.0.0.1']
+
+try:
+    with open('settings.json', 'r') as file:
+        settings = json.load(file)
+        logger.info("settings.json file found")
+
+        if "ollama_url" in settings:
+            OLLAMA_URL = settings["ollama_url"]
+            logger.info("\tusing OLLAMA_URL = " + settings["ollama_url"])
+
+        if "port" in settings:
+            PORT = settings["port"]
+            logger.info("\tusing PORT = " + str(settings["port"]))
+
+        if "allow_origins" in settings:
+            CORS_ALLOW_ORIGINS = settings["allow_origins"]
+            logger.info("\tusing CORS_ALLOW_ORIGINS = " + str(settings["allow_origins"]))
+    
+except FileNotFoundError:
+    logger.info("settings.json file not found, using default values")
+
+client = Client(host=OLLAMA_URL)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins = ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    allow_origins = CORS_ALLOW_ORIGINS,
     allow_credentials=True,
     allow_methods = ['*'],
     allow_headers = ['*']
@@ -41,27 +70,6 @@ class ChatPayload(BaseModel):
     messages: list[Message]
     model: str
     stream: bool
-
-OLLAMA_URL = "http://localhost:11434"
-PORT = 11435
-
-try:
-    with open('settings.json', 'r') as file:
-        settings = json.load(file)
-        logger.info("settings.json file found")
-
-        if settings["ollama_url"]:
-            OLLAMA_URL = settings["ollama_url"]
-            logger.info("\tusing OLLAMA_URL = " + settings["ollama_url"])
-
-        if settings["port"]:
-            PORT = settings["port"]
-            logger.info("\tusing PORT = " + str(settings["port"]))
-    
-except FileNotFoundError:
-    logger.info("settings.json file not found, using default values")
-
-client = Client(host=OLLAMA_URL)
 
 def stream_ollama_response(payload):
     url = OLLAMA_URL + '/api/chat'
@@ -96,7 +104,7 @@ async def _api_tags():
     logger.info("Returning models list")
     return client.list()
 
-@app.get("/")
+@app.get("/api")
 async def root():
     return "https://github.com/ollama/ollama/blob/main/docs/api.md"
 
